@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dividend Income Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#edf2fa;--panel:#fff;--ink:#101b33;--mute:#5a6b85;--line:#d0d9e8;--acc:#1d4ed8;--gold:#c58a12;--bar:#a9c3f2;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--panel:#121c30;--ink:#e6edfb;--mute:#94a5c4;--line:#26354f;--acc:#6b9bff;--gold:#e3b04b;--bar:#2b4a8c}}
+:root[data-theme="dark"]{--bg:#0b1220;--panel:#121c30;--ink:#e6edfb;--mute:#94a5c4;--line:#26354f;--acc:#6b9bff;--gold:#e3b04b;--bar:#2b4a8c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1040px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:clamp(26px,5vw,40px);line-height:1.1;margin:8px 0 4px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 12px;font-weight:600}
+.sub{color:var(--mute);margin:0 0 20px;max-width:60ch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--mute);gap:4px}
+input{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;padding:7px 8px;width:100%;min-width:0}
+input:focus-visible,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+input[type=checkbox]{width:auto}
+.chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:15px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th{font-weight:600;color:var(--mute);text-align:right;padding:6px 6px;font-size:13px}
+td{padding:4px 4px;border-top:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+td input{text-align:right}td:first-child input{text-align:left}
+button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);padding:7px 12px}
+button.p{background:var(--acc);border-color:var(--acc);color:#fff}
+:root[data-theme="dark"] button.p{color:#06101f}
+.x{padding:4px 9px;color:var(--mute)}
+.kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:16px}
+.k{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.k b{display:block;font-size:28px;font-weight:800;letter-spacing:-.02em}
+.k span{font-size:13px;color:var(--mute)}
+.k.hero{border-color:var(--acc);border-width:2px}.k.hero b{color:var(--acc);font-size:34px}
+svg{width:100%;height:auto;display:block}
+.note{font-size:13px;color:var(--mute);margin-top:8px}
+.r{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>Dividend Income Planner</h1>
+<p class="sub">Enter your holdings and assumptions: your income projection updates live. The starting figures are examples to replace with your own.</p>
+
+<section class="panel">
+<h2>Your holdings</h2>
+<div class="tw"><table id="tb"><thead><tr><th>Name</th><th>Shares</th><th>Price (€)</th><th>Yield (%)</th><th>Dividend growth (%/yr)</th><th></th></tr></thead><tbody></tbody></table></div>
+<div class="r"><button id="add">Add a holding</button><button id="reset">Restore examples</button></div>
+</section>
+
+<section class="panel">
+<h2>Assumptions</h2>
+<div class="grid">
+<label>Monthly contribution (€)<input id="contrib" type="number" min="0" step="50"></label>
+<label>Duration (years)<input id="years" type="number" min="1" max="50"></label>
+<label>Annual price growth (%)<input id="pg" type="number" step="0.5"></label>
+<label>Tax on dividends (%)<input id="tax" type="number" min="0" max="60" step="0.5"></label>
+<label>Monthly net income goal (€)<input id="goal" type="number" min="0" step="50"></label>
+<label class="chk" style="align-self:end"><input id="drip" type="checkbox">Reinvest net dividends</label>
+</div>
+<p class="note">Contributions are split in proportion to your current holdings. This is a simplified projection with no fees and no guarantee: past yields and growth do not predict future results.</p>
+</section>
+
+<div class="kpis" id="kpis"></div>
+
+<section class="panel">
+<h2>Net annual income by year</h2>
+<div id="chart"></div>
+</section>
+
+<section class="panel">
+<h2>Year-by-year detail</h2>
+<div class="tw"><table id="det" style="min-width:520px"><thead><tr><th>Year</th><th>Net dividends</th><th>Per month</th><th>Portfolio value</th><th>Capital invested</th></tr></thead><tbody></tbody></table></div>
+</section>
+</main>
+<script>
+(function(){
+var DEF={rows:[
+{n:"Example holding A",q:40,p:60,y:5.0,g:3},
+{n:"Example holding B",q:25,p:110,y:3.2,g:6},
+{n:"Example holding C",q:60,p:35,y:6.5,g:1.5}],
+contrib:300,years:20,pg:3,tax:30,goal:1500,drip:true};
+var S=JSON.parse(JSON.stringify(DEF));
+try{var sv=localStorage.getItem("divplan");if(sv){var o=JSON.parse(sv);if(o&&o.rows)S=o;}}catch(e){}
+var $=function(i){return document.getElementById(i)};
+var eur=new Intl.NumberFormat("en-GB",{style:"currency",currency:"EUR",maximumFractionDigits:0});
+function save(){try{localStorage.setItem("divplan",JSON.stringify(S))}catch(e){}}
+function num(v){v=parseFloat(v);return isFinite(v)?v:0}
+
+function renderRows(){
+ var tb=$("tb").tBodies[0];tb.innerHTML="";
+ S.rows.forEach(function(r,i){
+  var tr=document.createElement("tr");
+  var f=[["n","text"],["q","number"],["p","number"],["y","number"],["g","number"]];
+  f.forEach(function(c){
+   var td=document.createElement("td"),inp=document.createElement("input");
+   inp.type=c[1];inp.value=r[c[0]];if(c[1]=="number"){inp.step="any";inp.min="0"}
+   inp.setAttribute("aria-label",c[0]);
+   inp.addEventListener("input",function(){r[c[0]]=c[1]=="number"?num(inp.value):inp.value;calc()});
+   td.appendChild(inp);tr.appendChild(td)});
+  var td=document.createElement("td"),b=document.createElement("button");
+  b.className="x";b.textContent="Remove";b.addEventListener("click",function(){S.rows.splice(i,1);renderRows();calc()});
+  td.appendChild(b);tr.appendChild(td);tb.appendChild(tr)});
+}
+function sim(){
+ var N=Math.max(1,Math.min(50,Math.round(S.years)||1)),tax=S.tax/100,pg=S.pg/100;
+ var H=S.rows.map(function(r){return{s:r.q,p:r.p,d:r.p*r.y/100,g:r.g/100,v0:r.q*r.p}});
+ var tot=H.reduce(function(a,h){return a+h.v0},0),out=[],inv=tot,goalYear=null;
+ H.forEach(function(h){h.w=tot>0?h.v0/tot:(H.length?1/H.length:0)});
+ for(var y=1;y<=N;y++){
+  var inc=0;H.forEach(function(h){inc+=h.s*h.d});
+  var net=inc*(1-tax);
+  H.forEach(function(h){
+   if(h.p>0){
+    if(S.drip)h.s+=net*h.w/h.p;
+    h.s+=S.contrib*12*h.w/h.p}});
+  inv+=S.contrib*12;
+  var val=0;H.forEach(function(h){h.p*=1+pg;h.d*=1+h.g;val+=h.s*h.p});
+  out.push({y:y,net:net,m:net/12,val:val,inv:inv});
+  if(goalYear===null&&S.goal>0&&net/12>=S.goal)goalYear=y}
+ return{out:out,goalYear:goalYear,tot:tot,inc0:H.length?out[0].net:0}}
+
+function calc(){
+ save();var R=sim(),o=R.out,last=o[o.length-1];
+ var first=o[0]?o[0].m:0;
+ var k=[
+ ["hero",eur.format(first),"net monthly income today"],
+ ["",eur.format(last?last.m:0),"net monthly income in "+o.length+" years"],
+ ["",R.goalYear?"Year "+R.goalYear:"Not reached","goal of "+eur.format(S.goal)+" per month"],
+ ["",eur.format(last?last.val:0),"portfolio value at the end"]];
+ $("kpis").innerHTML=k.map(function(x){return'<div class="k '+x[0]+'"><b>'+x[1]+'</b><span>'+x[2]+'</span></div>'}).join("");
+ $("det").tBodies[0].innerHTML=o.map(function(r){return"<tr><td>"+r.y+"</td><td>"+eur.format(r.net)+"</td><td>"+eur.format(r.m)+"</td><td>"+eur.format(r.val)+"</td><td>"+eur.format(r.inv)+"</td></tr>"}).join("");
+ chart(o)}
+
+function chart(o){
+ var W=700,H=300,L=56,B=28,T=14,R=10,n=o.length;
+ var max=Math.max.apply(null,o.map(function(r){return r.net}).concat([S.goal*12,1]));
+ var bw=(W-L-R)/n,s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Projected net annual income">';
+ for(var i=0;i<=4;i++){var yv=T+(H-T-B)*(1-i/4);
+  s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yv+'" y2="'+yv+'" stroke="var(--line)"/><text x="'+(L-6)+'" y="'+(yv+4)+'" text-anchor="end" font-size="11" fill="var(--mute)">'+eur.format(max*i/4)+'</text>'}
+ o.forEach(function(r,i){
+  var h=(H-T-B)*r.net/max,x=L+i*bw+bw*.12;
+  var hit=S.goal>0&&r.m>=S.goal;
+  s+='<rect x="'+x+'" y="'+(H-B-h)+'" width="'+bw*.76+'" height="'+h+'" fill="'+(hit?'var(--acc)':'var(--bar)')+'"><title>Year '+r.y+': '+eur.format(r.net)+' net ('+eur.format(r.m)+'/month)</title></rect>';
+  if(n<=25||r.y%5==0)s+='<text x="'+(x+bw*.38)+'" y="'+(H-10)+'" text-anchor="middle" font-size="11" fill="var(--mute)">'+r.y+'</text>'});
+ if(S.goal>0){var gy=H-B-(H-T-B)*S.goal*12/max;
+  s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+gy+'" y2="'+gy+'" stroke="var(--gold)" stroke-width="2" stroke-dasharray="6 4"/><text x="'+(L+4)+'" y="'+(gy-5)+'" font-size="12" fill="var(--gold)">Goal: '+eur.format(S.goal*12)+' per year</text>'}
+ $("chart").innerHTML=s+"</svg>"}
+
+["contrib","years","pg","tax","goal"].forEach(function(id){
+ $(id).value=S[id];$(id).addEventListener("input",function(){S[id]=num($(id).value);calc()})});
+$("drip").checked=!!S.drip;$("drip").addEventListener("change",function(){S.drip=$("drip").checked;calc()});
+$("add").addEventListener("click",function(){S.rows.push({n:"New holding",q:0,p:0,y:0,g:0});renderRows();calc()});
+$("reset").addEventListener("click",function(){S=JSON.parse(JSON.stringify(DEF));["contrib","years","pg","tax","goal"].forEach(function(id){$(id).value=S[id]});$("drip").checked=S.drip;renderRows();calc()});
+renderRows();calc();
+})();
+</script>
+</body>
+</html>
